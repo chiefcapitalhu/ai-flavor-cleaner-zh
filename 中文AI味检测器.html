@@ -29,8 +29,9 @@ h1{margin:0;font-size:clamp(28px,4vw,46px);line-height:1.13;letter-spacing:-.04e
 .privacy::before{content:"";width:8px;height:8px;border-radius:50%;background:#2a7b50;box-shadow:0 0 0 4px rgba(42,123,80,.12)}
 .notice{display:flex;justify-content:space-between;gap:20px;align-items:center;margin-bottom:18px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:rgba(255,254,249,.7);color:var(--muted);font-size:13px}
 .notice strong{color:var(--ink)}
-.agent-cta{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:18px;padding:15px 17px;border:1px solid #b8cfc0;border-radius:14px;background:var(--green2)}
+.agent-cta{display:grid;gap:12px;margin-bottom:18px;padding:15px 17px;border:1px solid #b8cfc0;border-radius:14px;background:var(--green2)}
 .agent-cta strong{display:block;margin-bottom:2px;font-size:16px}.agent-cta p{margin:0;color:#486253;font-size:13px}.agent-cta .btn{flex:none;border-color:#7aa189}
+.install-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}.install-command{display:flex;align-items:center;min-width:0;padding:9px 12px;border:1px solid #b8cfc0;border-radius:9px;background:rgba(255,255,255,.72);color:#264c38;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;overflow-x:auto;white-space:nowrap}.agent-actions{display:flex;gap:8px}.agent-actions .btn{flex:1}
 .workspace{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(390px,.75fr);gap:18px;align-items:start}
 .card{border:1px solid var(--line);border-radius:var(--r);background:var(--card);box-shadow:var(--shadow)}
 .card-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 18px;border-bottom:1px solid var(--line)}
@@ -66,8 +67,8 @@ details.panel{overflow:hidden}details.panel>summary{display:flex;align-items:cen
 dialog{width:min(620px,calc(100% - 28px));padding:0;border:0;border-radius:16px;background:var(--card);box-shadow:0 24px 80px rgba(0,0,0,.22)}dialog::backdrop{background:rgba(20,27,23,.42)}.dialog-head{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--line)}.dialog-head h2{margin:0;font-size:18px}.icon-btn{width:36px;height:36px;border:1px solid var(--line);border-radius:9px;background:#fff}.dialog-body{padding:18px}.field{display:grid;gap:5px;margin-bottom:13px}.field label{font-size:13px;font-weight:800}.field input,.field select,.field textarea{width:100%;min-height:42px;padding:9px 11px;border:1px solid #cfd1c9;border-radius:9px;background:#fff}.field textarea{min-height:72px;line-height:1.5}.field-note{color:var(--muted);font-size:12px}.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:17px}.personal-list{display:grid;gap:8px;margin:15px 0 0}.personal-item{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:10px}.personal-item strong{display:block}.personal-item small{color:var(--muted);overflow-wrap:anywhere}.personal-actions{display:flex;gap:6px;flex:none}
 .toast{position:fixed;right:20px;bottom:20px;z-index:10;padding:10px 14px;border-radius:10px;background:#17211b;color:#fff;box-shadow:var(--shadow);opacity:0;transform:translateY(8px);pointer-events:none;transition:.2s}.toast.show{opacity:1;transform:none}
 .test-summary{display:flex;gap:10px;align-items:center;padding-top:12px}.pass{color:#28734d}.fail{color:var(--red)}.test-list{margin:8px 0 0;padding-left:20px;font-size:12px}
-@media(max-width:900px){.workspace{grid-template-columns:1fr}.side{grid-template-columns:1fr}.results{max-height:none}.topbar{display:block}.privacy{display:inline-flex}.notice{align-items:flex-start;flex-direction:column;gap:4px}.agent-cta{align-items:flex-start;flex-direction:column}.agent-cta .btn{width:100%}}
-@media(max-width:520px){.shell{padding:18px 12px 36px}.topbar{margin-bottom:14px}.dek{font-size:14px}.notice{font-size:12px}.card-head{padding:13px 14px}.input-wrap{padding:12px 12px 6px}textarea{min-height:270px;padding:13px;font-size:16px}.actions,.preview-wrap{padding-left:12px;padding-right:12px}.actions .btn{flex:1}.stats{grid-template-columns:repeat(3,1fr)}.stat{padding:12px 8px}.stat strong{font-size:23px}.finding{padding:10px}.footer{padding:14px}.personal-item{align-items:flex-start;flex-direction:column}.personal-actions{width:100%}.personal-actions .btn{flex:1}}
+@media(max-width:900px){.workspace{grid-template-columns:1fr}.side{grid-template-columns:1fr}.results{max-height:none}.topbar{display:block}.privacy{display:inline-flex}.notice{align-items:flex-start;flex-direction:column;gap:4px}.agent-cta .btn{width:100%}}
+@media(max-width:520px){.shell{padding:18px 12px 36px}.topbar{margin-bottom:14px}.dek{font-size:14px}.notice{font-size:12px}.install-row{grid-template-columns:1fr}.card-head{padding:13px 14px}.input-wrap{padding:12px 12px 6px}textarea{min-height:270px;padding:13px;font-size:16px}.actions,.preview-wrap{padding-left:12px;padding-right:12px}.actions .btn{flex:1}.stats{grid-template-columns:repeat(3,1fr)}.stat{padding:12px 8px}.stat strong{font-size:23px}.finding{padding:10px}.footer{padding:14px}.personal-item{align-items:flex-start;flex-direction:column}.personal-actions{width:100%}.personal-actions .btn{flex:1}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}.toast{transition:none}}
 </style>
 </head>
@@ -78,7 +79,11 @@ dialog{width:min(620px,calc(100% - 28px));padding:0;border:0;border-radius:16px;
     <div class="privacy">纯本地处理 · 不上传文本</div>
   </header>
   <div class="notice"><span><strong>判断边界：</strong>红色是规则表中的绝对禁用句式；黄色只是高风险检查。引用或反例也可能命中。</span><span>离线可用 · 无模型 API</span></div>
-  <div class="agent-cta"><div><strong>需要直接改写？交给 Agent 处理</strong><p>安装同仓库的 <code>ai-flavor-cleaner-zh</code> Skill，让 Agent 结合上下文改写；离线检测器不会擅自改动原文。</p></div><button class="btn" id="copySkillBtn">复制 Skill 使用指令</button></div>
+  <div class="agent-cta">
+    <div><strong>需要直接改写？交给 Agent 处理</strong><p>先安装同仓库的 <code>ai-flavor-cleaner-zh</code> Skill，再让 Agent 结合上下文改写；离线检测器不会擅自改动原文。</p></div>
+    <div class="install-row"><code class="install-command" id="installCommand">npx skills add https://github.com/chiefcapitalhu/ai-flavor-cleaner-zh/tree/main/skill/ai-flavor-cleaner-zh -g -a codex -y</code><button class="btn" id="copyInstallBtn">复制一键安装命令</button></div>
+    <div class="agent-actions"><button class="btn" id="copySkillBtn">复制 Skill 使用指令</button></div>
+  </div>
 
   <section class="workspace">
     <div class="card editor">
@@ -321,9 +326,11 @@ dialog{width:min(620px,calc(100% - 28px));padding:0;border:0;border-radius:16px;
   let timer;$('#source').addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(update,80)});
   $('#sampleBtn').onclick=()=>{$('#source').value='真正关键的是，我们需要重塑整个协作生态。\n这不仅是一次产品升级，更是对未来工作方式的重新定义。\n行业报告显示，这项能力将为团队闭环奠定基础。\n原文里写着“总而言之”，这里只是在展示问题句。';update()};
   $('#clearBtn').onclick=()=>{$('#source').value='';update();$('#source').focus()};$('#copyReportBtn').onclick=copyReport;$('#exportBtn').onclick=exportReport;$('#runTestsBtn').onclick=runTests;
-  $('#copySkillBtn').onclick=async()=>{const prompt='使用 $ai-flavor-cleaner-zh 检查并改写下面的中文，保留事实、作者立场和信息边界，不要添加原文没有的数据、案例、来源或观点。';try{await navigator.clipboard.writeText(prompt)}catch(e){const t=document.createElement('textarea');t.value=prompt;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove()}toast('Skill 使用指令已复制')};
+  async function copyText(value,message){try{await navigator.clipboard.writeText(value)}catch(e){const t=document.createElement('textarea');t.value=value;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove()}toast(message)}
+  $('#copyInstallBtn').onclick=()=>copyText($('#installCommand').textContent,'一键安装命令已复制');
+  $('#copySkillBtn').onclick=()=>copyText('使用 $ai-flavor-cleaner-zh 检查并改写下面的中文，保留事实、作者立场和信息边界，不要添加原文没有的数据、案例、来源或观点。','Skill 使用指令已复制');
   renderRuleGroups();renderPersonalList();update();const testResult=runTests();
-  window.ClicheHighlighter={RULES,scan,renderHighlight,runTests,get personal(){return personal},version:'1.0.0',selfTestResult:testResult};
+  window.ClicheHighlighter={RULES,scan,renderHighlight,runTests,get personal(){return personal},version:'1.0.1',selfTestResult:testResult};
 })();
 </script>
 </body>

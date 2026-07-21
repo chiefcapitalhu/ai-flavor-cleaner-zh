@@ -19,7 +19,13 @@
 
 ### 2. Agent Skill
 
-将 [`skill/ai-flavor-cleaner-zh`](skill/ai-flavor-cleaner-zh) 目录安装到 Codex 的 skills 目录，然后使用：
+使用 Codex 的一键安装命令：
+
+```bash
+npx skills add https://github.com/chiefcapitalhu/ai-flavor-cleaner-zh/tree/main/skill/ai-flavor-cleaner-zh -g -a codex -y
+```
+
+该命令需要本机已安装 Node.js。也可以手动将 [`skill/ai-flavor-cleaner-zh`](skill/ai-flavor-cleaner-zh) 目录安装到 Codex 的 skills 目录。安装后使用：
 
 ```text
 使用 $ai-flavor-cleaner-zh 检查并改写下面的中文，保留事实和作者立场，不要添加原文没有的信息。

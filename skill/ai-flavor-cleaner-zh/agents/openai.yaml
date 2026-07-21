@@ -1,0 +1,4 @@
+interface:
+  display_name: "中文 AI 味清理器"
+  short_description: "检查并改写中文 AI 套话，保留事实、立场与自然语气"
+  default_prompt: "使用 $ai-flavor-cleaner-zh 检查并改写这段中文，让它更自然，同时不要添加原文没有的信息。"

@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>中文 AI 味检测器</title>
+<!--
+  中文 AI 味检测器
+  基于 Simon Willison 的 LLM cliché highlighter 产品思路开发：
+  https://github.com/simonw/tools/blob/main/llm-cliche-highlighter.html
+  上游及本衍生工具按 Apache License 2.0 提供。详见同目录 LICENSE 与 NOTICE.md。
+  本文件包含中文规则、风险分级、报告、个人规则、自测试及响应式界面等扩展。
+-->
+<style>
+:root{--ink:#17211b;--muted:#647069;--paper:#f5f2e9;--card:#fffef9;--line:#d9d8cf;--green:#1f5c3f;--green2:#e4f0e8;--red:#a6332b;--redbg:#fde8e5;--amber:#8b5a00;--amberbg:#fff0bd;--blue:#285f8f;--bluebg:#e7f1fa;--shadow:0 12px 32px rgba(32,43,36,.08);--r:16px}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer}
+a{color:var(--green)}
+.shell{max-width:1440px;margin:auto;padding:28px clamp(16px,3vw,42px) 56px}
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:20px}
+.eyebrow{margin:0 0 4px;color:var(--green);font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+h1{margin:0;font-size:clamp(28px,4vw,46px);line-height:1.13;letter-spacing:-.04em}
+.dek{max-width:760px;margin:10px 0 0;color:var(--muted);font-size:16px}
+.privacy{display:flex;gap:9px;align-items:center;flex:none;margin-top:8px;padding:8px 12px;border:1px solid #bdd0c2;border-radius:999px;background:var(--green2);color:var(--green);font-size:13px;font-weight:700}
+.privacy::before{content:"";width:8px;height:8px;border-radius:50%;background:#2a7b50;box-shadow:0 0 0 4px rgba(42,123,80,.12)}
+.notice{display:flex;justify-content:space-between;gap:20px;align-items:center;margin-bottom:18px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:rgba(255,254,249,.7);color:var(--muted);font-size:13px}
+.notice strong{color:var(--ink)}
+.agent-cta{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:18px;padding:15px 17px;border:1px solid #b8cfc0;border-radius:14px;background:var(--green2)}
+.agent-cta strong{display:block;margin-bottom:2px;font-size:16px}.agent-cta p{margin:0;color:#486253;font-size:13px}.agent-cta .btn{flex:none;border-color:#7aa189}
+.workspace{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(390px,.75fr);gap:18px;align-items:start}
+.card{border:1px solid var(--line);border-radius:var(--r);background:var(--card);box-shadow:var(--shadow)}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.card-head h2{margin:0;font-size:17px;letter-spacing:-.01em}
+.small{color:var(--muted);font-size:12px}
+.editor{overflow:hidden}
+.input-wrap{position:relative;padding:16px 16px 8px}
+textarea{display:block;width:100%;min-height:320px;padding:16px;border:1px solid #cfd1c9;border-radius:12px;resize:vertical;background:#fff;color:var(--ink);font-size:17px;line-height:1.85;outline:none}
+textarea:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(31,92,63,.12)}
+.input-meta{display:flex;justify-content:space-between;gap:12px;padding:7px 4px 0;color:var(--muted);font-size:12px}
+.actions{display:flex;flex-wrap:wrap;gap:8px;padding:8px 16px 16px}
+.btn{min-height:38px;padding:7px 13px;border:1px solid #c9cbc3;border-radius:9px;background:#fff;color:var(--ink);font-weight:700}
+.btn:hover{border-color:#9ba198;background:#f7f7f2}.btn:focus-visible{outline:3px solid rgba(31,92,63,.2);outline-offset:2px}
+.btn.primary{border-color:var(--green);background:var(--green);color:white}.btn.danger{color:var(--red)}
+.preview-wrap{padding:0 16px 16px}
+.preview{min-height:160px;max-height:420px;overflow:auto;padding:16px;border:1px solid var(--line);border-radius:12px;background:#fbfaf5;white-space:pre-wrap;overflow-wrap:anywhere;font-size:16px;line-height:1.85}
+.placeholder{color:#9a9f99}
+mark{padding:1px 2px;border-radius:3px;color:inherit}.hit-ban{background:var(--redbg);box-shadow:inset 0 -2px 0 #df756c}.hit-risk{background:var(--amberbg);box-shadow:inset 0 -2px 0 #d49a19}.hit-personal{background:var(--bluebg);box-shadow:inset 0 -2px 0 #6d9cc5}
+.side{display:grid;gap:18px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;overflow:hidden;background:var(--line)}
+.stat{padding:15px 13px;background:var(--card)}.stat strong{display:block;font-size:28px;line-height:1.15}.stat span{color:var(--muted);font-size:12px}.stat.ban strong{color:var(--red)}.stat.risk strong{color:var(--amber)}
+.legend{display:flex;flex-wrap:wrap;gap:9px 16px;padding:12px 15px;border-top:1px solid var(--line);background:var(--card);font-size:12px;color:var(--muted)}
+.dot{display:inline-block;width:9px;height:9px;margin-right:6px;border-radius:2px}.dot.ban{background:#df756c}.dot.risk{background:#d49a19}.dot.personal{background:#6d9cc5}
+.results{max-height:590px;overflow:auto;padding:10px}
+.empty{padding:32px 18px;text-align:center;color:var(--muted)}.empty strong{display:block;margin-bottom:5px;color:var(--ink);font-size:16px}
+.finding{margin:0 0 9px;padding:12px;border:1px solid var(--line);border-radius:11px;background:#fff}.finding:last-child{margin-bottom:0}
+.finding-top{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:7px}.badge{padding:2px 7px;border-radius:999px;font-size:11px;font-weight:800}.badge.ban{background:var(--redbg);color:var(--red)}.badge.risk{background:var(--amberbg);color:var(--amber)}.badge.personal{background:var(--bluebg);color:var(--blue)}.badge.quote{background:#edece8;color:#666}
+.rule-id{color:var(--muted);font:12px ui-monospace,SFMono-Regular,Menlo,monospace}.finding-name{font-weight:800}.sentence{margin:0 0 8px;padding-left:10px;border-left:3px solid #c9cbc3;color:#303b34}.explain{display:grid;gap:4px;font-size:13px}.explain b{color:var(--muted)}
+details.panel{overflow:hidden}details.panel>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 17px;cursor:pointer;font-weight:800;list-style:none}details.panel>summary::-webkit-details-marker{display:none}details.panel>summary::after{content:"＋";font-size:19px;font-weight:400}details.panel[open]>summary::after{content:"−"}.panel-body{padding:0 15px 15px;border-top:1px solid var(--line)}
+.rule-tools{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:11px 0}.rule-groups{display:grid;gap:12px}.rule-group h3{margin:0 0 6px;font-size:13px}.rule-row{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:start;padding:7px 0;border-top:1px solid #eeece6}.rule-row input{margin-top:5px}.rule-row label{cursor:pointer}.rule-row small{display:block;color:var(--muted)}.count-pill{min-width:24px;padding:1px 6px;border-radius:999px;background:#efeee9;text-align:center;font-size:11px;font-weight:800}
+.manual{margin:0;padding-left:20px;color:var(--muted);font-size:13px}.manual li+li{margin-top:5px}
+.footer{margin-top:20px;padding:18px;color:var(--muted);font-size:12px}.footer p{margin:0 0 7px}.footer p:last-child{margin:0}
+dialog{width:min(620px,calc(100% - 28px));padding:0;border:0;border-radius:16px;background:var(--card);box-shadow:0 24px 80px rgba(0,0,0,.22)}dialog::backdrop{background:rgba(20,27,23,.42)}.dialog-head{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--line)}.dialog-head h2{margin:0;font-size:18px}.icon-btn{width:36px;height:36px;border:1px solid var(--line);border-radius:9px;background:#fff}.dialog-body{padding:18px}.field{display:grid;gap:5px;margin-bottom:13px}.field label{font-size:13px;font-weight:800}.field input,.field select,.field textarea{width:100%;min-height:42px;padding:9px 11px;border:1px solid #cfd1c9;border-radius:9px;background:#fff}.field textarea{min-height:72px;line-height:1.5}.field-note{color:var(--muted);font-size:12px}.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:17px}.personal-list{display:grid;gap:8px;margin:15px 0 0}.personal-item{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:10px}.personal-item strong{display:block}.personal-item small{color:var(--muted);overflow-wrap:anywhere}.personal-actions{display:flex;gap:6px;flex:none}
+.toast{position:fixed;right:20px;bottom:20px;z-index:10;padding:10px 14px;border-radius:10px;background:#17211b;color:#fff;box-shadow:var(--shadow);opacity:0;transform:translateY(8px);pointer-events:none;transition:.2s}.toast.show{opacity:1;transform:none}
+.test-summary{display:flex;gap:10px;align-items:center;padding-top:12px}.pass{color:#28734d}.fail{color:var(--red)}.test-list{margin:8px 0 0;padding-left:20px;font-size:12px}
+@media(max-width:900px){.workspace{grid-template-columns:1fr}.side{grid-template-columns:1fr}.results{max-height:none}.topbar{display:block}.privacy{display:inline-flex}.notice{align-items:flex-start;flex-direction:column;gap:4px}.agent-cta{align-items:flex-start;flex-direction:column}.agent-cta .btn{width:100%}}
+@media(max-width:520px){.shell{padding:18px 12px 36px}.topbar{margin-bottom:14px}.dek{font-size:14px}.notice{font-size:12px}.card-head{padding:13px 14px}.input-wrap{padding:12px 12px 6px}textarea{min-height:270px;padding:13px;font-size:16px}.actions,.preview-wrap{padding-left:12px;padding-right:12px}.actions .btn{flex:1}.stats{grid-template-columns:repeat(3,1fr)}.stat{padding:12px 8px}.stat strong{font-size:23px}.finding{padding:10px}.footer{padding:14px}.personal-item{align-items:flex-start;flex-direction:column}.personal-actions{width:100%}.personal-actions .btn{flex:1}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}.toast{transition:none}}
+</style>
+</head>
+<body>
+<main class="shell">
+  <header class="topbar">
+    <div><p class="eyebrow">离线中文写作工具</p><h1>中文 AI 味检测器</h1><p class="dek">把文本贴进来，先找出可稳定识别的套话，再由你判断要删、要补证据，还是保留。高风险词只提醒检查，不替你判死刑。</p></div>
+    <div class="privacy">纯本地处理 · 不上传文本</div>
+  </header>
+  <div class="notice"><span><strong>判断边界：</strong>红色是规则表中的绝对禁用句式；黄色只是高风险检查。引用或反例也可能命中。</span><span>离线可用 · 无模型 API</span></div>
+  <div class="agent-cta"><div><strong>需要直接改写？交给 Agent 处理</strong><p>安装同仓库的 <code>ai-flavor-cleaner-zh</code> Skill，让 Agent 结合上下文改写；离线检测器不会擅自改动原文。</p></div><button class="btn" id="copySkillBtn">复制 Skill 使用指令</button></div>
+
+  <section class="workspace">
+    <div class="card editor">
+      <div class="card-head"><h2>原文</h2><span class="small">输入时实时扫描</span></div>
+      <div class="input-wrap">
+        <textarea id="source" aria-label="待检查文本" placeholder="在这里粘贴中文文稿……" spellcheck="false"></textarea>
+        <div class="input-meta"><span id="charCount">0 字</span><span id="statusText">等待输入</span></div>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="sampleBtn">载入示例</button>
+        <button class="btn" id="clearBtn">清空</button>
+        <button class="btn" id="copyReportBtn">复制报告</button>
+        <button class="btn" id="exportBtn">导出 .md</button>
+      </div>
+      <div class="card-head"><h2>高亮预览</h2><span class="small">点击结果可定位对应文本</span></div>
+      <div class="preview-wrap"><div class="preview" id="preview" aria-live="polite"><span class="placeholder">输入文本后，高亮会显示在这里。</span></div></div>
+    </div>
+
+    <aside class="side">
+      <div class="card">
+        <div class="stats">
+          <div class="stat ban"><strong id="banCount">0</strong><span>绝对禁用</span></div>
+          <div class="stat risk"><strong id="riskCount">0</strong><span>高风险检查</span></div>
+          <div class="stat"><strong id="sentenceCount">0</strong><span>命中句子</span></div>
+        </div>
+        <div class="legend"><span><i class="dot ban"></i>建议优先处理</span><span><i class="dot risk"></i>需结合上下文</span><span><i class="dot personal"></i>个人规则</span></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>检查结果</h2><span class="small" id="totalCount">0 处命中</span></div>
+        <div class="results" id="results"><div class="empty"><strong>还没有检查结果</strong>粘贴文稿后，这里会列出原句、问题和处理建议。</div></div>
+      </div>
+      <details class="card panel" open>
+        <summary><span>规则开关 <span class="small" id="enabledSummary"></span></span></summary>
+        <div class="panel-body">
+          <div class="rule-tools"><span class="small">关闭后立即停止匹配</span><button class="btn" id="managePersonalBtn">管理个人规则</button></div>
+          <div class="rule-groups" id="ruleGroups"></div>
+        </div>
+      </details>
+      <details class="card panel">
+        <summary>需要人工判断的结构规则</summary>
+        <div class="panel-body"><p class="small">下列项目依赖语义或全文节奏，V1 不把它们伪装成自动命中：</p><ul class="manual"><li>强行凑三个并列项、同构三句与段尾重复总结</li><li>只讲概念没有人和动作、全文没有具体失败</li><li>突然拔高到行业/时代/未来，或为比喻再解释一遍</li><li>只有中立信息没有作者判断、每句都像截图金句</li><li>开头先介绍概念，以及“挑战与未来展望”模板</li></ul></div>
+      </details>
+    </aside>
+  </section>
+
+  <details class="card panel footer" id="testsPanel">
+    <summary>内置自测试与项目说明</summary>
+    <div class="panel-body">
+      <div class="test-summary"><button class="btn" id="runTestsBtn">重新运行自测试</button><strong id="testStatus">尚未运行</strong></div>
+      <ol class="test-list" id="testList"></ol>
+      <p><strong>规则边界：</strong>内置规则只自动匹配可稳定识别的中文表达，不替代事实核验、语义判断和人工编辑。</p>
+      <p><strong>上游归属：</strong>本工具基于 Simon Willison 的 <a href="https://github.com/simonw/tools/blob/main/llm-cliche-highlighter.html" target="_blank" rel="noopener">LLM cliché highlighter</a> 的单文件即时高亮思路开发，按 Apache License 2.0 提供；中文版增加了中文规则、风险分级、报告、个人规则和自测试。</p>
+    </div>
+  </details>
+</main>
+
+<dialog id="personalDialog" aria-labelledby="personalTitle">
+  <div class="dialog-head"><h2 id="personalTitle">个人规则</h2><button class="icon-btn" id="closeDialogBtn" aria-label="关闭">×</button></div>
+  <div class="dialog-body">
+    <form id="personalForm">
+      <input type="hidden" id="personalId">
+      <div class="field"><label for="personalName">规则名称</label><input id="personalName" required maxlength="40" placeholder="例如：我的口头禅"></div>
+      <div class="field"><label for="personalPattern">匹配内容</label><input id="personalPattern" required placeholder="输入词语或正则表达式"><span class="field-note">普通文本按字面匹配；选择“正则”后可写表达式，不需要输入 / /。</span></div>
+      <div class="field"><label for="personalMode">匹配方式</label><select id="personalMode"><option value="literal">字面匹配</option><option value="regex">正则表达式</option></select></div>
+      <div class="field"><label for="personalLevel">提醒级别</label><select id="personalLevel"><option value="risk">高风险检查</option><option value="ban">绝对禁用</option></select></div>
+      <div class="field"><label for="personalProblem">问题说明</label><input id="personalProblem" maxlength="100" placeholder="为什么要检查它"></div>
+      <div class="field"><label for="personalSuggest">处理建议</label><input id="personalSuggest" maxlength="120" placeholder="命中后怎么处理"></div>
+      <div class="dialog-actions"><button type="button" class="btn" id="resetFormBtn">新建一条</button><button class="btn primary" type="submit">保存规则</button></div>
+    </form>
+    <div class="personal-list" id="personalList"></div>
+  </div>
+</dialog>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(() => {
+  'use strict';
+  const STORE_PERSONAL='zh-cliche-personal-v1', STORE_DISABLED='zh-cliche-disabled-v1';
+  const rule=(id,name,level,source,problem,suggest,flags='g')=>({id,name,level,source,flags,problem,suggest,builtin:true});
+  const RULES=[
+    rule('A01','不是……而是……','ban','不是[^。！？!?；;\\n]{1,80}?而是','二元对比常用来制造假反转。','去掉否定铺垫，直接说后半句；后半句没有信息就整句删除。'),
+    rule('A02','不仅……而且/更是……','ban','(?:这)?不仅(?:是)?[^。！？!?；;\\n]{1,80}?(?:而且|更是)','先陈述普通事实，再强行拔高。','保留可验证事实，删除拔高；影响要写清具体变化。'),
+    rule('A03','不再只是……而是……','ban','不再只是[^。！？!?；;\\n]{1,80}?而是','用句式代替论证。','直接说明现在增加了什么动作、结果或限制。'),
+    rule('A04','真正关键/真正的核心','ban','真正(?:关键的是|的核心是)','用“真正”冒充判断力度。','删除“真正/核心”，直接说判断。'),
+    rule('A05','本质上','ban','本质上','经常跳过证据，直接宣布本质。','改成可观察事实、因果过程，或明确说这是个人判断。'),
+    rule('A06','这意味着','ban','这意味着','常在事实后追加空泛解释。','检查后半句是否增加信息；没有就删，有就直接说结果。'),
+    rule('A07','从 A 到 B','ban','从[^，。！？!?；;\\n]{1,30}?到[^，。！？!?；;\\n]{1,30}','可能制造不存在的变化尺度。','写清谁在何时从什么状态变成什么状态。'),
+    rule('A08','如果说……那么……','ban','如果说[^。！？!?；;\\n]{1,80}?那么','为了比喻而比喻，拖慢口播。','去掉比喻架子，直接说明两者关系。'),
+    rule('A09','一方面……另一方面……','ban','一方面[^。！？!?；;\\n]{1,100}?另一方面','论文式平衡表达，削弱判断。','先说最重要的一面，另一面确实影响结论时再补充。'),
+    rule('A10','总而言之/综上所述','ban','总而言之|综上所述','作文式收尾，通常重复前文。','直接结束，或只保留观众要记住的动作。'),
+    rule('A11','值得注意/值得一提','ban','值得注意的是|值得一提的是','提醒观众注意，却不增加信息。','删掉提醒，直接说后面的事实。'),
+    rule('A12','我们可以发现/不难发现','ban','我们可以发现|不难发现','替观众宣布结论，带论文腔。','直接给事实；需要判断时明确说是判断。'),
+    rule('A13','接下来/先说/最后','ban','(?:^|[。！？!?；;\\n])\\s*(?:接下来|先说|最后)(?=[，,:：。！？!?]|我们|我|你)','培训老师语气，暴露提纲。','用问题、现场变化或自然承接推进内容。','gm'),
+    rule('A14','今天我们学习/下面教大家','ban','今天我们学习|下面教大家','把视频变成课程。','直接进入观众正在遇到的问题。'),
+    rule('A15','有一个简单的方法/正确做法是','ban','有一个简单的方法|正确做法是','教程腔，“简单/正确”通常没有依据。','直接展示动作和结果。'),
+    rule('A16','建议大家/你需要做的是','ban','建议大家|你需要做的是','居高临下，像培训老师布置任务。','改成具体使用场景：下次遇到某情况，可以怎么做。'),
+    rule('A17','没有套路、废话、门槛','ban','没有套路[，,、 ]*没有废话[，,、 ]*没有门槛','连续否定制造宣传感，没有事实。','删除保证，直接交付内容或写清步骤。'),
+    rule('A18','你早就/心里已经知道答案','ban','你早就知道答案|你心里已经有答案','替观众制造虚假共鸣。','改成具体问题、选择或真实案例。'),
+    rule('A19','停下来感受/花时间消化','ban','让我们停下来感受一下|请花一点时间消化','模仿心理咨询或演讲停顿。','删除；让事实本身建立重量。'),
+    rule('A20','这就是全部/游戏/一切的核心','ban','这就是全部|这就是整个游戏|这就是一切的核心','用绝对判断制造金句。','写清适用范围和真实判断，或删除。'),
+    rule('B01','范式','risk','范式','抽象名词，可能没有说明什么变了。','写清哪个人的哪个动作发生变化。'),
+    rule('B02','体系','risk','体系','可能用完整感掩盖内容空缺。','列出实际组成；列不出就换成具体对象。'),
+    rule('B03','能力','risk','能力','指代过宽。','写清能完成什么任务、在什么条件下完成。'),
+    rule('B04','生态','risk','生态','范围模糊。','写清具体公司、产品、用户或合作关系。'),
+    rule('B05','价值','risk','价值','可能没有回答对谁有用。','写清谁因此省了什么、避免了什么或多做了什么。'),
+    rule('B06','闭环','risk','闭环','商业黑话。','改成结果如何保存、流转或被再次使用。'),
+    rule('B07','底层逻辑','risk','底层逻辑','可能假装解释到了根部。','写出因果链；写不出就删。'),
+    rule('B08','未来/方向','risk','未来|方向','预测可能空泛。','给出时间、对象、已发生变化或明确依据。'),
+    rule('B09','升级','risk','升级','没有说明升级了什么。','写清新增、减少或改变的功能与动作。'),
+    rule('B10','革命/重构/重塑/重新定义','risk','革命|重构|重塑|重新定义','可能强行拔高意义。','改成可验证的前后对比。'),
+    rule('B11','标志着/见证了','risk','标志着|见证了','新闻稿腔，可能夸大事件意义。','直接写事件发生了什么。'),
+    rule('B12','体现/彰显/象征','risk','体现了|彰显了|象征着','可能给事实追加虚假深度。','删掉象征层，保留事实和有来源的解释。'),
+    rule('B13','凸显了重要性','risk','凸显了[^。！？!?\\n]{0,30}?的重要性','用“重要”替代原因。','写清不处理会造成什么后果。'),
+    rule('B14','为……奠定基础','risk','为[^。！？!?\\n]{1,40}?奠定(?:了)?基础','模糊承诺未来影响。','写清已经具备了什么条件。'),
+    rule('B15','关键转折点/核心时刻','risk','关键转折点|核心时刻','可能夸大普通更新。','提供可验证的前后变化，否则删除。'),
+    rule('B16','不断演变的格局','risk','不断演变的格局','抽象且没有时间边界。','说清最近发生的具体变化。'),
+    rule('B17','至关重要/极其重要/关键性的','risk','至关重要|极其重要|关键性的','只强调，未必解释。','写清影响对象和失败后果。'),
+    rule('B18','深入探讨','risk','深入探讨','内容未必真的深入。','直接说要回答的具体问题。'),
+    rule('B19','深刻/宝贵/丰富','risk','深刻的|宝贵的|丰富的','宣传形容词可能代替信息。','用具体内容或结果替代形容词。'),
+    rule('B20','活力/开创/叹为观止','risk','充满活力的|开创性的|令人叹为观止的','广告宣传腔。','删除形容词，给可观察细节。'),
+    rule('B21','增强/促进/培养/赋能','risk','增强|促进|培养|赋能','可能没写清发生了什么动作。','改成具体功能、行为或结果。'),
+    rule('B22','展示/强调/突出','risk','展示|强调|突出','可能用于给句尾补意义。','直接写被展示的事实。'),
+    rule('B23','此外/然而','risk','此外|然而','可能是机械连接段落。','检查是否真有递进或转折；能直接接就删除。'),
+    rule('B24','与……保持一致','risk','与[^。！？!?\\n]{1,40}?保持一致','模糊地制造合理性。','写清一致的标准、文件或要求。'),
+    rule('B25','行业报告显示','risk','行业报告显示','模糊归因。','补齐报告名称、机构、日期和具体结论。'),
+    rule('B26','匿名权威','risk','专家认为|观察者指出|一些批评者认为','借匿名权威增加可信度。','写明人物及来源；找不到就删除。'),
+    rule('B27','多个来源表明','risk','多个来源表明','没有给出具体来源。','列出来源和一致结论，或删除。'),
+    rule('B28','AI 免责声明残留','risk','基于可用信息|虽然具体信息有限','AI 免责声明残留。','明确哪里未知；未知内容不要继续推测。'),
+    rule('B29','过度限定','risk','可以潜在地可能|潜在地可能','限定词堆叠，不敢判断。','只保留一个准确的限定词。'),
+    rule('B30','通用乐观结尾','risk','激动人心的时代即将到来|未来一片光明','通用乐观结尾。','换成已经确定的下一步，或直接结束。'),
+    rule('C08','破折号反转/金句','risk','——','破折号可能被用来制造广告式反转。','确认戏剧停顿是否来自真实内容；否则改成句号或逗号。'),
+  ];
+
+  const $=s=>document.querySelector(s);
+  const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const escapeRegExp=s=>String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  let personal=[], disabled=new Set(), lastFindings=[];
+  try{personal=JSON.parse(localStorage.getItem(STORE_PERSONAL)||'[]')}catch(e){personal=[]}
+  try{disabled=new Set(JSON.parse(localStorage.getItem(STORE_DISABLED)||'[]'))}catch(e){disabled=new Set()}
+
+  function normalizedRule(p){return {...p,builtin:false,id:p.id||('P'+Date.now()),source:p.mode==='regex'?p.pattern:escapeRegExp(p.pattern),flags:'g',problem:p.problem||'命中个人设定的检查项。',suggest:p.suggest||'按你的写作规范处理。'};}
+  function allRules(){return RULES.concat(personal.map(normalizedRule))}
+  function sentenceRange(text,index){
+    const stops='。！？!?；;\\n'; let start=index,end=index;
+    while(start>0&&!stops.includes(text[start-1]))start--;
+    while(end<text.length&&!stops.includes(text[end]))end++;
+    if(end<text.length)end++;
+    return {start,end,text:text.slice(start,end).trim()};
+  }
+  function quotedAt(text,index){
+    const before=text.slice(Math.max(0,index-180),index);
+    const pairs=[['“','”'],['「','」'],['『','』'],['\"','\"'],['‘','’']];
+    return pairs.some(([l,r])=>l===r?(before.split(l).length-1)%2===1:before.lastIndexOf(l)>before.lastIndexOf(r));
+  }
+  function scan(text,rules=allRules(),disabledIds=disabled){
+    const out=[];
+    for(const r of rules){
+      if(disabledIds.has(r.id)||!r.source)continue;
+      let re; try{re=new RegExp(r.source,r.flags.includes('g')?r.flags:r.flags+'g')}catch(e){continue}
+      let m,guard=0;
+      while((m=re.exec(text))&&guard++<1000){
+        if(!m[0]){re.lastIndex++;continue}
+        const sr=sentenceRange(text,m.index);
+        out.push({rule:r,start:m.index,end:m.index+m[0].length,match:m[0],sentence:sr.text,sentenceStart:sr.start,quoted:quotedAt(text,m.index)});
+      }
+    }
+    return out.sort((a,b)=>a.start-b.start||(b.end-b.start)-(a.end-a.start));
+  }
+  function renderHighlight(text,findings){
+    if(!text)return '<span class="placeholder">输入文本后，高亮会显示在这里。</span>';
+    const chosen=[];
+    for(const f of findings){if(!chosen.some(x=>f.start<x.end&&f.end>x.start))chosen.push(f)}
+    chosen.sort((a,b)=>a.start-b.start);
+    let html='',pos=0;
+    chosen.forEach(f=>{html+=esc(text.slice(pos,f.start));const cls=f.rule.builtin?(f.rule.level==='ban'?'hit-ban':'hit-risk'):'hit-personal';html+=`<mark class="${cls}" title="${esc(f.rule.id+' · '+f.rule.name)}">${esc(text.slice(f.start,f.end))}</mark>`;pos=f.end});
+    return html+esc(text.slice(pos));
+  }
+  function renderResults(findings){
+    if(!findings.length){$('#results').innerHTML='<div class="empty"><strong>没有发现已启用规则的命中</strong>这不代表文稿没有问题；语义、事实和节奏仍需人工检查。</div>';return}
+    $('#results').innerHTML=findings.map((f,i)=>{const type=f.rule.builtin?(f.rule.level==='ban'?'ban':'risk'):'personal';const label=f.rule.level==='ban'?'绝对禁用':'高风险检查';return `<article class="finding" data-index="${i}" tabindex="0"><div class="finding-top"><span class="badge ${type}">${f.rule.builtin?label:'个人规则 · '+label}</span><span class="rule-id">${esc(f.rule.id)}</span><span class="finding-name">${esc(f.rule.name)}</span>${f.quoted?'<span class="badge quote">可能是引用/反例</span>':''}</div><p class="sentence">${esc(f.sentence||f.match)}</p><div class="explain"><span><b>问题：</b>${esc(f.rule.problem)}</span><span><b>建议：</b>${esc(f.rule.suggest)}</span></div></article>`}).join('');
+    document.querySelectorAll('.finding').forEach(el=>el.addEventListener('click',()=>locateFinding(findings[+el.dataset.index])));
+  }
+  function locateFinding(f){const ta=$('#source');ta.focus();ta.setSelectionRange(f.start,f.end);ta.scrollIntoView({behavior:'smooth',block:'center'})}
+  function update(){
+    const text=$('#source').value;lastFindings=scan(text);
+    const ban=lastFindings.filter(f=>f.rule.level==='ban').length,risk=lastFindings.length-ban;
+    const sentences=new Set(lastFindings.map(f=>`${f.sentenceStart}:${f.sentence}`)).size;
+    $('#preview').innerHTML=renderHighlight(text,lastFindings);renderResults(lastFindings);
+    $('#banCount').textContent=ban;$('#riskCount').textContent=risk;$('#sentenceCount').textContent=sentences;$('#totalCount').textContent=`${lastFindings.length} 处命中`;
+    $('#charCount').textContent=`${text.length} 字`;$('#statusText').textContent=text?`已扫描 ${allRules().length-disabled.size} 条启用规则`:'等待输入';
+    renderRuleCounts();
+  }
+  function groupTitle(r){if(!r.builtin)return '个人规则';if(r.level==='ban')return '绝对禁用';return r.id.startsWith('C')?'结构信号':'高风险检查'}
+  function renderRuleGroups(){
+    const grouped={};allRules().forEach(r=>(grouped[groupTitle(r)]??=[]).push(r));
+    $('#ruleGroups').innerHTML=Object.entries(grouped).map(([name,rs])=>`<section class="rule-group"><h3>${esc(name)} · ${rs.length} 条</h3>${rs.map(r=>`<div class="rule-row"><input type="checkbox" id="toggle-${esc(r.id)}" data-rule="${esc(r.id)}" ${disabled.has(r.id)?'':'checked'}><label for="toggle-${esc(r.id)}"><strong>${esc(r.id)} · ${esc(r.name)}</strong><small>${esc(r.problem)}</small></label><span class="count-pill" data-count="${esc(r.id)}">0</span></div>`).join('')}</section>`).join('');
+    document.querySelectorAll('[data-rule]').forEach(cb=>cb.addEventListener('change',()=>{cb.checked?disabled.delete(cb.dataset.rule):disabled.add(cb.dataset.rule);localStorage.setItem(STORE_DISABLED,JSON.stringify([...disabled]));update()}));
+    renderRuleCounts();
+  }
+  function renderRuleCounts(){
+    const counts={};lastFindings.forEach(f=>counts[f.rule.id]=(counts[f.rule.id]||0)+1);document.querySelectorAll('[data-count]').forEach(x=>x.textContent=counts[x.dataset.count]||0);
+    $('#enabledSummary').textContent=`${allRules().length-disabled.size}/${allRules().length} 已启用`;
+  }
+  function report(){
+    const text=$('#source').value,ban=lastFindings.filter(f=>f.rule.level==='ban').length,risk=lastFindings.length-ban,uniq=new Set(lastFindings.map(f=>`${f.sentenceStart}:${f.sentence}`)).size;
+    let out=`# 中文 LLM 套话检查报告\n\n- 文本长度：${text.length} 字\n- 总命中：${lastFindings.length} 处\n- 绝对禁用：${ban} 处\n- 高风险检查：${risk} 处\n- 命中句子：${uniq} 句\n\n> 高风险命中只是检查提示；引用、反例和必要术语需人工确认。\n`;
+    if(!lastFindings.length)return out+'\n未发现已启用规则的命中。\n';
+    lastFindings.forEach((f,i)=>{out+=`\n## ${i+1}. ${f.rule.id} · ${f.rule.name}\n\n- 级别：${f.rule.level==='ban'?'绝对禁用':'高风险检查'}${f.quoted?'（可能是引用/反例）':''}\n- 原句：${f.sentence||f.match}\n- 问题：${f.rule.problem}\n- 建议：${f.rule.suggest}\n`});return out;
+  }
+  async function copyReport(){try{await navigator.clipboard.writeText(report());toast('检查报告已复制')}catch(e){const t=document.createElement('textarea');t.value=report();document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();toast('检查报告已复制')}}
+  function exportReport(){const blob=new Blob([report()],{type:'text/markdown;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`中文套话检查报告-${new Date().toISOString().slice(0,10)}.md`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500);toast('报告已导出')}
+  let toastTimer;function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),1800)}
+
+  function resetPersonalForm(){$('#personalForm').reset();$('#personalId').value='';$('#personalLevel').value='risk';$('#personalMode').value='literal'}
+  function renderPersonalList(){
+    $('#personalList').innerHTML=personal.length?personal.map(p=>`<div class="personal-item"><div><strong>${esc(p.name)}</strong><small>${esc(p.mode==='regex'?`正则：${p.pattern}`:`字面：${p.pattern}`)}</small></div><div class="personal-actions"><button class="btn" type="button" data-edit="${esc(p.id)}">编辑</button><button class="btn danger" type="button" data-delete="${esc(p.id)}">删除</button></div></div>`).join(''):'<div class="empty">还没有个人规则。</div>';
+    document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>{const p=personal.find(x=>x.id===b.dataset.edit);if(!p)return;$('#personalId').value=p.id;$('#personalName').value=p.name;$('#personalPattern').value=p.pattern;$('#personalMode').value=p.mode;$('#personalLevel').value=p.level;$('#personalProblem').value=p.problem||'';$('#personalSuggest').value=p.suggest||'';$('#personalName').focus()});
+    document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>{const p=personal.find(x=>x.id===b.dataset.delete);if(p&&confirm(`删除个人规则“${p.name}”？`)){personal=personal.filter(x=>x.id!==p.id);disabled.delete(p.id);savePersonal();resetPersonalForm()}});
+  }
+  function savePersonal(){localStorage.setItem(STORE_PERSONAL,JSON.stringify(personal));localStorage.setItem(STORE_DISABLED,JSON.stringify([...disabled]));renderPersonalList();renderRuleGroups();update()}
+  $('#personalForm').addEventListener('submit',e=>{e.preventDefault();const mode=$('#personalMode').value,pattern=$('#personalPattern').value.trim();if(mode==='regex'){try{new RegExp(pattern,'g')}catch(err){alert('正则表达式无效：'+err.message);return}}const id=$('#personalId').value||('P'+Date.now());const p={id,name:$('#personalName').value.trim(),pattern,mode,level:$('#personalLevel').value,problem:$('#personalProblem').value.trim(),suggest:$('#personalSuggest').value.trim()};const at=personal.findIndex(x=>x.id===id);if(at>=0)personal[at]=p;else personal.push(p);savePersonal();resetPersonalForm();toast('个人规则已保存')});
+  $('#managePersonalBtn').onclick=()=>{renderPersonalList();$('#personalDialog').showModal()};$('#closeDialogBtn').onclick=()=>$('#personalDialog').close();$('#resetFormBtn').onclick=resetPersonalForm;$('#personalDialog').addEventListener('click',e=>{if(e.target===$('#personalDialog'))$('#personalDialog').close()});
+
+  function runTests(){
+    const temp=normalizedRule({id:'PTEST',name:'测试个人规则',pattern:'我的禁词',mode:'literal',level:'risk'});
+    const tests=[
+      ['明确正例：A01 句式',()=>scan('这不是效率问题，而是目标问题。',RULES,new Set()).some(f=>f.rule.id==='A01')],
+      ['明确正例：B10 高风险词',()=>scan('这个产品重新定义了协作。',RULES,new Set()).some(f=>f.rule.id==='B10')],
+      ['明确反例：普通否定不误报 A01',()=>!scan('这不是我写的。',RULES,new Set()).some(f=>f.rule.id==='A01')],
+      ['明确反例：普通文本无命中',()=>scan('小王周二把报错截图发给开发，半小时后修好了。',RULES,new Set()).length===0],
+      ['误伤边界：引号中的问题句会标记',()=>{const f=scan('原文写的是“真正关键的是增长”。',RULES,new Set()).find(x=>x.rule.id==='A04');return !!f&&f.quoted}],
+      ['规则开关：关闭 A05 后不命中',()=>!scan('本质上，这是选择。',RULES,new Set(['A05'])).some(f=>f.rule.id==='A05')],
+      ['个人规则：字面表达可检测',()=>scan('这里出现我的禁词。',[temp],new Set()).length===1],
+      ['句子边界：结果保留完整命中句',()=>scan('第一句正常。综上所述，结束。',RULES,new Set()).find(f=>f.rule.id==='A10')?.sentence==='综上所述，结束。']
+    ];
+    const results=tests.map(([name,fn])=>{try{return {name,ok:!!fn()}}catch(e){return {name,ok:false,error:e.message}}});const passed=results.filter(x=>x.ok).length;
+    $('#testStatus').textContent=`${passed}/${results.length} 通过`;$('#testStatus').className=passed===results.length?'pass':'fail';$('#testList').innerHTML=results.map(x=>`<li class="${x.ok?'pass':'fail'}">${x.ok?'✓':'✕'} ${esc(x.name)}${x.error?'：'+esc(x.error):''}</li>`).join('');return {passed,total:results.length,results};
+  }
+
+  let timer;$('#source').addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(update,80)});
+  $('#sampleBtn').onclick=()=>{$('#source').value='真正关键的是，我们需要重塑整个协作生态。\n这不仅是一次产品升级，更是对未来工作方式的重新定义。\n行业报告显示，这项能力将为团队闭环奠定基础。\n原文里写着“总而言之”，这里只是在展示问题句。';update()};
+  $('#clearBtn').onclick=()=>{$('#source').value='';update();$('#source').focus()};$('#copyReportBtn').onclick=copyReport;$('#exportBtn').onclick=exportReport;$('#runTestsBtn').onclick=runTests;
+  $('#copySkillBtn').onclick=async()=>{const prompt='使用 $ai-flavor-cleaner-zh 检查并改写下面的中文，保留事实、作者立场和信息边界，不要添加原文没有的数据、案例、来源或观点。';try{await navigator.clipboard.writeText(prompt)}catch(e){const t=document.createElement('textarea');t.value=prompt;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove()}toast('Skill 使用指令已复制')};
+  renderRuleGroups();renderPersonalList();update();const testResult=runTests();
+  window.ClicheHighlighter={RULES,scan,renderHighlight,runTests,get personal(){return personal},version:'1.0.0',selfTestResult:testResult};
+})();
+</script>
+</body>
+</html>

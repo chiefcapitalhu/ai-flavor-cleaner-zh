@@ -80,7 +80,7 @@ dialog{width:min(620px,calc(100% - 28px));padding:0;border:0;border-radius:16px;
   </header>
   <div class="notice"><span><strong>判断边界：</strong>红色是规则表中的绝对禁用句式；黄色只是高风险检查。引用或反例也可能命中。</span><span>离线可用 · 无模型 API</span></div>
   <div class="agent-cta">
-    <div><strong>需要直接改写？交给 Agent 处理</strong><p>先安装同仓库的 <code>ai-flavor-cleaner-zh</code> Skill，再让 Agent 结合上下文改写；离线检测器不会擅自改动原文。</p></div>
+    <div><strong>需要直接改写？交给 Agent 处理</strong><p>先安装同仓库的 <code>ai-flavor-cleaner-zh</code> Skill，再让 Agent 结合上下文改写。它可以恢复原文已有的观点、犹豫、幽默和情绪，但不会替作者发明人格、经历或感受。</p></div>
     <div class="install-row"><code class="install-command" id="installCommand">npx skills add https://github.com/chiefcapitalhu/ai-flavor-cleaner-zh/tree/main/skill/ai-flavor-cleaner-zh -g -a codex -y</code><button class="btn" id="copyInstallBtn">复制一键安装命令</button></div>
     <div class="agent-actions"><button class="btn" id="copySkillBtn">复制 Skill 使用指令</button></div>
   </div>
@@ -328,9 +328,9 @@ dialog{width:min(620px,calc(100% - 28px));padding:0;border:0;border-radius:16px;
   $('#clearBtn').onclick=()=>{$('#source').value='';update();$('#source').focus()};$('#copyReportBtn').onclick=copyReport;$('#exportBtn').onclick=exportReport;$('#runTestsBtn').onclick=runTests;
   async function copyText(value,message){try{await navigator.clipboard.writeText(value)}catch(e){const t=document.createElement('textarea');t.value=value;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove()}toast(message)}
   $('#copyInstallBtn').onclick=()=>copyText($('#installCommand').textContent,'一键安装命令已复制');
-  $('#copySkillBtn').onclick=()=>copyText('使用 $ai-flavor-cleaner-zh 检查并改写下面的中文，保留事实、作者立场和信息边界，不要添加原文没有的数据、案例、来源或观点。','Skill 使用指令已复制');
+  $('#copySkillBtn').onclick=()=>copyText('使用 $ai-flavor-cleaner-zh 检查并改写下面的中文，保留事实、作者立场和信息边界。可以恢复原文已有的观点、犹豫、幽默和情绪，但不要发明人格、经历、感受，也不要添加原文没有的数据、案例、来源或观点。','Skill 使用指令已复制');
   renderRuleGroups();renderPersonalList();update();const testResult=runTests();
-  window.ClicheHighlighter={RULES,scan,renderHighlight,runTests,get personal(){return personal},version:'1.0.1',selfTestResult:testResult};
+  window.ClicheHighlighter={RULES,scan,renderHighlight,runTests,get personal(){return personal},version:'1.1.0',selfTestResult:testResult};
 })();
 </script>
 </body>
